@@ -10,14 +10,6 @@ A dependency-free, animated WebGL aurora/gradient background for React —
 one WebGL1 program, and simplex noise driving an organic, flowing color
 field in real time.
 
-**🔗 Live demo:** _coming soon — see "Deploying the demo" below_
-
-![demo](demo.gif)
-
-> Record your own demo: run the example locally (see below), then use
-> something like [ScreenToGif](https://www.screentogif.com/) or Windows'
-> built-in Clipchamp (export → GIF) and save it as `demo.gif` in the
-> project root.
 
 ## Why
 
