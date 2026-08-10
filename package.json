@@ -1,0 +1,55 @@
+{
+  "name": "react-aurora-background",
+  "version": "0.1.0",
+  "description": "A dependency-free animated WebGL aurora/gradient background for React, driven by hand-written GLSL simplex noise -- no three.js required.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "npm run dev --prefix example",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "react": ">=17.0.0",
+    "react-dom": ">=17.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.1",
+    "vite-plugin-dts": "^4.0.3"
+  },
+  "keywords": [
+    "react",
+    "react-component",
+    "webgl",
+    "shader",
+    "glsl",
+    "background",
+    "gradient",
+    "aurora",
+    "canvas"
+  ],
+  "author": "godwire",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/godwire/react-aurora-background.git"
+  },
+  "homepage": "https://github.com/godwire/react-aurora-background#readme"
+}
