@@ -1,6 +1,6 @@
 # react-aurora-background
 
-[![npm version](https://img.shields.io/npm/v/react-aurora-background.svg)](https://www.npmjs.com/package/react-aurora-background)
+[![npm version](https://img.shields.io/npm/v/react-aurora-background.svg)](https://docs.npmjs.com/packages-and-modules)
 [![CI](https://github.com/godwire/react-aurora-background/actions/workflows/ci.yml/badge.svg)](https://github.com/godwire/react-aurora-background/actions/workflows/ci.yml)
 [![bundle size](https://img.shields.io/bundlephobia/minzip/react-aurora-background)](https://bundlephobia.com/package/react-aurora-background)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
