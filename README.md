@@ -1,178 +1,464 @@
 # react-aurora-background
 
-[![npm version](https://img.shields.io/npm/v/react-aurora-background.svg)](https://www.npmjs.com/package/react-aurora-background)
-[![CI](https://github.com/godwire/react-aurora-background/actions/workflows/ci.yml/badge.svg)](https://github.com/godwire/react-aurora-background/actions/workflows/ci.yml)
-[![bundle size](https://img.shields.io/bundlephobia/minzip/react-aurora-background)](https://bundlephobia.com/package/react-aurora-background)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+A lightweight animated aurora background for React, rendered directly with WebGL and hand-written GLSL.
 
-A dependency-free, animated WebGL aurora/gradient background for React —
-**hand-written GLSL, no three.js, no shader library**. A single `<canvas>`,
-one WebGL1 program, and simplex noise driving an organic, flowing color
-field in real time.
+The component is intentionally small: it renders one `<canvas>`, compiles one WebGL1 program, and lets the fragment shader do the visual work. There is no Three.js layer and no shader framework between React and WebGL.
 
-**🔗 Live demo:** _coming soon — see "Deploying the demo" below_
+## Demo
 
-![demo](demo.gif)
+![react-aurora-background demo](./assets/demo.gif)
 
-> Record your own demo: run the example locally (see below), then use
-> something like [ScreenToGif](https://www.screentogif.com/) or Windows'
-> built-in Clipchamp (export → GIF) and save it as `demo.gif` in the
-> project root.
+The included example app exposes the main visual controls so you can try different palettes, animation speeds, noise scales, and cursor swirl settings.
 
-## Why
+## What this package is for
 
-Most animated gradient/aurora backgrounds for React pull in three.js (a
-~600KB dependency) just to draw a full-screen quad and run a fragment
-shader — which is all three.js is doing here anyway, under a lot of
-abstraction. This component skips the abstraction: it talks to WebGL1
-directly.
+`react-aurora-background` is meant for cases where you want an animated gradient or aurora-style surface behind a hero section, landing page, dashboard, sign-in screen, or other UI without bringing a full 3D rendering library into the project.
 
-- 📦 **Zero runtime dependencies** — only `react`/`react-dom` as peers, no three.js, no shader library
-- 🎨 **Real GLSL** — 3D simplex noise (Ashima Arts' reference implementation) + fractal Brownian motion, not a canvas-2D approximation
-- 🖱️ **Cursor-reactive** — subtly distorts the flow field, toggleable
-- 🎛️ **Fully themeable** — 3 colors, speed, and noise scale are all props
-- 🧹 **Clean lifecycle** — compiles/links on mount, tears down the GL context (program, buffers, listeners) on unmount; no leaks across route changes
-- 🛟 **Fails safe** — if WebGL isn't available, it logs a warning and renders nothing rather than crashing, so you can style a static fallback behind it
-- 📐 **TypeScript** — full type definitions included
+It is a background component rather than a layout component. You decide how large its parent is and what content sits above it.
 
-## Install
+## Highlights
+
+- Direct WebGL1 rendering
+- Hand-written GLSL shaders
+- 3D simplex noise with layered fractal Brownian motion
+- Three configurable gradient colors
+- Adjustable animation speed and noise scale
+- Optional cursor-driven swirl interaction
+- TypeScript types included
+- Responsive canvas sizing through `ResizeObserver`
+- Device pixel ratio capped internally to avoid unnecessary rendering cost on very high-DPI displays
+- WebGL resources and event listeners are cleaned up when the component unmounts
+- No Three.js or external shader library
+
+React and React DOM are peer dependencies.
+
+## Installation
 
 ```bash
 npm install react-aurora-background
 ```
 
-## Usage
+The package expects React 17 or newer.
 
-The component renders a `<canvas>` that fills its container via CSS
-(`width: 100%; height: 100%`) — give it a positioned parent to control its
-size, e.g. as an absolutely-positioned background layer:
+## Quick start
 
 ```tsx
 import { AuroraBackground } from 'react-aurora-background'
 
-function Hero() {
+const COLOR_A: [number, number, number] = [0.05, 0.02, 0.15]
+const COLOR_B: [number, number, number] = [0.4, 0.1, 0.6]
+const COLOR_C: [number, number, number] = [0.1, 0.6, 0.9]
+
+export default function Hero() {
   return (
-    <div style={{ position: 'relative', height: '100vh' }}>
+    <section
+      style={{
+        position: 'relative',
+        minHeight: '100vh',
+        overflow: 'hidden',
+      }}
+    >
       <AuroraBackground
-        style={{ position: 'absolute', inset: 0 }}
-        colorA={[0.05, 0.02, 0.15]}
-        colorB={[0.4, 0.1, 0.6]}
-        colorC={[0.1, 0.6, 0.9]}
+        colorA={COLOR_A}
+        colorB={COLOR_B}
+        colorC={COLOR_C}
+        style={{
+          position: 'absolute',
+          inset: 0,
+        }}
       />
-      <div style={{ position: 'relative', zIndex: 1 }}>
-        <h1>Your content on top</h1>
+
+      <div
+        style={{
+          position: 'relative',
+          zIndex: 1,
+        }}
+      >
+        <h1>Your content goes here</h1>
       </div>
-    </div>
+    </section>
   )
 }
 ```
 
+The canvas always uses `width: 100%` and `height: 100%`, so its size comes from the parent container. In most layouts, the simplest setup is a positioned parent with the aurora canvas absolutely positioned behind the content.
+
 ## Props
 
 | Prop | Type | Default | Description |
-|---|---|---|---|
-| `className` | `string` | `''` | Extra class name(s) on the canvas |
-| `style` | `CSSProperties` | — | Inline styles on the canvas |
-| `colorA` | `[number, number, number]` | `[0.05, 0.02, 0.15]` | First gradient color, RGB in the 0-1 range |
+| --- | --- | --- | --- |
+| `className` | `string` | `''` | Extra class name or class names applied to the canvas |
+| `style` | `CSSProperties` | — | Inline styles applied to the canvas |
+| `colorA` | `[number, number, number]` | `[0.05, 0.02, 0.15]` | First gradient color |
 | `colorB` | `[number, number, number]` | `[0.4, 0.1, 0.6]` | Second gradient color |
 | `colorC` | `[number, number, number]` | `[0.1, 0.6, 0.9]` | Third gradient color |
 | `speed` | `number` | `0.06` | Animation speed |
-| `scale` | `number` | `0.8` | Noise scale — higher values produce smaller, denser cloud shapes |
-| `interactive` | `boolean` | `true` | Whether the flow visibly swirls around the cursor |
-| `swirlRadius` | `number` | `0.55` | How far the swirl reaches from the cursor, in UV units |
-| `swirlStrength` | `number` | `2.4` | How tightly the flow twists around the cursor, in radians at the center |
+| `scale` | `number` | `0.8` | Noise scale. Higher values create smaller, denser structures |
+| `interactive` | `boolean` | `true` | Enables or disables cursor interaction |
+| `swirlRadius` | `number` | `0.55` | Radius of the cursor-driven swirl in UV space |
+| `swirlStrength` | `number` | `2.4` | Strength of the swirl, in radians near its center |
 
-Colors are RGB triples in the **0-1** range (WebGL convention), not 0-255
-— e.g. pure red is `[1, 0, 0]`, not `[255, 0, 0]`.
+## Colors
 
-### ⚠️ Performance note
-
-`colorA`/`colorB`/`colorC` (and any array/object prop) are effect
-dependencies: passing a new array literal on every render (e.g.
-`colorA={[0.1, 0.2, 0.3]}` written inline in JSX) tears down and rebuilds
-the entire WebGL context every time that component re-renders. Define
-your palettes as module-level constants or memoize them with `useMemo`:
+Colors use normalized WebGL RGB values from `0` to `1`, not the usual `0` to `255`.
 
 ```tsx
-const COLOR_A: [number, number, number] = [0.05, 0.02, 0.15] // outside the component
-
-// or, if it needs to be dynamic:
-const colorA = useMemo<[number, number, number]>(() => [r, g, b], [r, g, b])
+const red: [number, number, number] = [1, 0, 0]
+const white: [number, number, number] = [1, 1, 1]
+const darkBlue: [number, number, number] = [0.02, 0.05, 0.2]
 ```
+
+A practical way to convert a regular RGB color is to divide each channel by `255`.
+
+For example, `rgb(64, 128, 255)` becomes approximately:
+
+```ts
+[0.251, 0.502, 1]
+```
+
+## Customization example
+
+```tsx
+import { AuroraBackground } from 'react-aurora-background'
+import type { RGB } from 'react-aurora-background'
+
+const SUNSET_A: RGB = [0.15, 0.02, 0.05]
+const SUNSET_B: RGB = [0.8, 0.25, 0.1]
+const SUNSET_C: RGB = [0.95, 0.7, 0.2]
+
+export function SunsetBackground() {
+  return (
+    <AuroraBackground
+      colorA={SUNSET_A}
+      colorB={SUNSET_B}
+      colorC={SUNSET_C}
+      speed={0.08}
+      scale={1.2}
+      swirlRadius={0.7}
+      swirlStrength={2.8}
+    />
+  )
+}
+```
+
+The example application in this repository contains Aurora, Sunset, Emerald, and Monochrome palettes and lets you adjust the main animation parameters interactively.
+
+## Using CSS classes
+
+The component accepts a normal `className`, so it can be positioned and styled without inline styles.
+
+```tsx
+<div className="hero">
+  <AuroraBackground className="hero__aurora" />
+
+  <div className="hero__content">
+    <h1>Product title</h1>
+  </div>
+</div>
+```
+
+```css
+.hero {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  background: #05030b;
+}
+
+.hero__aurora {
+  position: absolute;
+  inset: 0;
+}
+
+.hero__content {
+  position: relative;
+  z-index: 1;
+}
+```
+
+The static `background` on the parent is useful as a fallback while the canvas initializes and on systems where WebGL is unavailable.
+
+## Performance notes
+
+The component creates and owns a WebGL context inside a React effect. Changes to its rendering props cause that effect to run again, which means the existing rendering resources are cleaned up and created again.
+
+In particular, avoid creating new color arrays on every React render:
+
+```tsx
+// Avoid this in a component that re-renders often.
+<AuroraBackground colorA={[0.05, 0.02, 0.15]} />
+```
+
+Prefer stable values declared outside the component:
+
+```tsx
+const COLOR_A: [number, number, number] = [0.05, 0.02, 0.15]
+
+function Page() {
+  return <AuroraBackground colorA={COLOR_A} />
+}
+```
+
+If a color genuinely depends on component state or props, memoize it:
+
+```tsx
+import { useMemo } from 'react'
+
+const colorA = useMemo<[number, number, number]>(
+  () => [red, green, blue],
+  [red, green, blue],
+)
+```
+
+Changing `speed`, `scale`, `interactive`, `swirlRadius`, or `swirlStrength` also recreates the rendering effect. This is fine for normal UI controls, but these props are not intended to be updated every animation frame.
+
+The canvas resolution follows the element size and the current device pixel ratio. The internal DPR is capped at `2`, which keeps the image sharp on high-density displays without rendering an unnecessarily large framebuffer.
+
+## Cursor interaction
+
+When `interactive` is enabled, pointer movement is tracked at the window level rather than only on the canvas.
+
+This is deliberate. A background usually sits underneath headings, buttons, forms, and other interactive elements. Listening at the window level allows the shader effect to keep following the pointer even while the pointer is over content layered above the canvas.
+
+Disable the interaction when you only want the ambient animation:
+
+```tsx
+<AuroraBackground interactive={false} />
+```
+
+## How it works
+
+The rendering path is intentionally straightforward.
+
+1. A full-screen quad made from two triangles is uploaded to WebGL.
+2. The vertex shader passes that geometry through in clip space.
+3. The fragment shader calculates the visual result for every pixel.
+4. 3D simplex noise is sampled with screen position and time.
+5. Several noise octaves are combined into fractal Brownian motion to create larger and smaller structures in the same field.
+6. The resulting value is blended across the three configured colors with smooth transitions.
+7. When interaction is enabled, the noise sampling coordinates are rotated around the cursor position. The rotation fades with distance, which produces the local swirl rather than adding a simple cursor highlight.
+8. `requestAnimationFrame` advances time and draws the next frame.
+
+There are no textures to load and no scene graph to maintain. The movement comes from continuously sampling the procedural noise field over time.
+
+## WebGL lifecycle
+
+On mount, the component:
+
+- requests a WebGL1 context;
+- compiles and links the shaders;
+- creates the full-screen geometry buffer;
+- resolves shader attribute and uniform locations;
+- starts the animation loop;
+- observes canvas resizing;
+- registers pointer tracking when interaction is enabled.
+
+On unmount, it:
+
+- cancels the animation frame;
+- disconnects the resize observer;
+- removes the pointer listener;
+- deletes the WebGL program;
+- deletes the geometry buffer.
+
+If WebGL cannot be created, the component logs a warning and leaves the canvas empty instead of throwing an application-level error. You can place a static background behind it to handle that case visually.
 
 ## Browser support
 
-Requires WebGL1, which is available in effectively all browsers released
-in the last decade. On the rare browser/device where it isn't (or where
-it's disabled), the component logs a warning to the console and renders
-an empty canvas rather than throwing — style a fallback background behind
-it if you need one.
+The component requires WebGL1.
 
-## Development
+WebGL1 is available in current desktop and mobile browsers, but it can still be unavailable when hardware acceleration is disabled, the browser blocks WebGL, or the device has an unsupported graphics configuration.
+
+Because the component fails without crashing the surrounding React tree, a CSS fallback background is usually enough for these cases.
+
+## Reduced motion
+
+The component currently does not automatically read `prefers-reduced-motion`.
+
+If your application needs to respect that preference, you can decide whether to render the animated background at the application level.
+
+```tsx
+import { useEffect, useState } from 'react'
+import { AuroraBackground } from 'react-aurora-background'
+
+function AccessibleAurora() {
+  const [reduceMotion, setReduceMotion] = useState(false)
+
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)')
+
+    const update = () => setReduceMotion(media.matches)
+    update()
+
+    media.addEventListener('change', update)
+    return () => media.removeEventListener('change', update)
+  }, [])
+
+  if (reduceMotion) {
+    return <div className="static-background" />
+  }
+
+  return <AuroraBackground />
+}
+```
+
+## Project structure
+
+```text
+react-aurora-background/
+├── .github/
+│   └── workflows/
+├── example/
+│   └── src/
+├── src/
+│   ├── AuroraBackground.tsx
+│   ├── index.ts
+│   ├── shaders.ts
+│   ├── vite-env.d.ts
+│   └── webgl.ts
+├── LICENSE
+├── package.json
+├── tsconfig.json
+└── vite.config.ts
+```
+
+The package code lives in `src/`. The `example/` directory is a separate Vite application used to test and demonstrate the component.
+
+During development, the example app resolves `react-aurora-background` directly to the source entry point, so you do not need to rebuild or link the package after every change.
+
+## Local development
+
+Clone the repository and install the root dependencies:
 
 ```bash
 git clone https://github.com/godwire/react-aurora-background.git
 cd react-aurora-background
-
 npm install
-npm run dev          # launches the example app at http://localhost:5173,
-                      # importing the component straight from src/
 ```
 
-Other useful scripts:
+Start the example application:
 
 ```bash
-npm run typecheck    # tsc --noEmit
-npm run build         # builds dist/ (ESM + CJS + .d.ts)
+npm run dev
 ```
 
-The `example/` app aliases `react-aurora-background` to `../src/index.ts`,
-so it always reflects whatever is currently in `src/` — no build/link step
-needed while iterating.
+The Vite development server runs the interactive demo and imports the component directly from `src/`.
 
-## Deploying the demo
+## Type checking
+
+```bash
+npm run typecheck
+```
+
+This runs TypeScript without emitting build files.
+
+## Building the package
+
+```bash
+npm run build
+```
+
+The package build produces the distributable files in `dist/`, including ESM, CommonJS, and TypeScript declarations.
+
+The package exports:
+
+```text
+dist/index.js
+dist/index.cjs
+dist/index.d.ts
+```
+
+Only `dist/` is included in the published package according to the `files` field in `package.json`.
+
+## Building the example
 
 ```bash
 cd example
+npm install
 npm run build
 ```
 
-Deploy `example/dist` anywhere static (Vercel, Netlify, GitHub Pages). On
-Vercel: import this repo, set **Root Directory** to `example`, framework
-preset **Vite**.
+The static output is written to:
 
-## Publishing to npm
+```text
+example/dist/
+```
+
+It can be deployed to any static host.
+
+For platforms such as Vercel, use `example` as the project root and Vite as the framework/build setup.
+
+## Publishing
+
+Before publishing a new version, run the type check and package build:
 
 ```bash
+npm run typecheck
 npm run build
+```
+
+Then publish through npm using your normal release workflow:
+
+```bash
 npm login
 npm publish
 ```
 
-`files: ["dist"]` in `package.json` means only the built output ships, not
-the source or the example app.
+Remember to update the package version before publishing a new release.
 
-## How it works, briefly
+## Troubleshooting
 
-- The vertex shader is a no-op passthrough; a single 2-triangle quad
-  covers the whole canvas in clip space.
-- All the actual work happens per-pixel in the fragment shader:
-  `gl_FragCoord` gives screen position directly (no varying needed to pass
-  UVs from the vertex stage).
-- 3D simplex noise (`snoise`) is sampled with `(x, y, time)`, so animating
-  is just advancing the third dimension — this is what makes the motion
-  continuous and organic instead of looking like a scrolling texture.
-- Three octaves of that noise are layered (fractal Brownian motion) for
-  soft cloud-like structure, then the result is remapped to `[0, 1]` and
-  used to blend between the three configured colors with wide `smoothstep`
-  ranges for gentle, non-banded transitions.
-- The cursor interaction rotates the noise sample point around the cursor
-  by an angle that falls off smoothly with distance — strong right at the
-  cursor, zero a bit further out. That's what makes the flow itself
-  visibly swirl and follow the cursor, rather than just placing a
-  highlight on top of an unchanged pattern. A smaller, subtler glow is
-  layered on top of that to reinforce where the interaction is centered.
+### The canvas is visible but has no height
+
+`AuroraBackground` fills its parent. Give the parent an explicit height, `min-height`, or a layout that otherwise resolves to a non-zero height.
+
+```css
+.hero {
+  position: relative;
+  min-height: 100vh;
+}
+```
+
+### Content appears behind the background
+
+Place the canvas in a lower stacking layer and the page content in a higher one.
+
+```css
+.aurora {
+  position: absolute;
+  inset: 0;
+}
+
+.content {
+  position: relative;
+  z-index: 1;
+}
+```
+
+### The WebGL context keeps restarting
+
+Check whether color props are being created as new array literals during every render. Move constant palettes outside the component or memoize dynamic arrays.
+
+Also avoid continuously changing the numeric rendering props from a high-frequency React state update.
+
+### Nothing renders on a particular browser or device
+
+Check the browser console for the WebGL warning and verify that hardware acceleration and WebGL are enabled. Keep a static CSS background behind the canvas for a graceful fallback.
+
+## Contributing
+
+Issues and pull requests are welcome.
+
+For changes to the rendering code, please test both the package build and the example application before opening a pull request:
+
+```bash
+npm run typecheck
+npm run build
+npm run dev
+```
+
+When changing shader behavior, include a short explanation of the visual or performance impact in the pull request description.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](./LICENSE).
