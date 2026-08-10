@@ -6,7 +6,7 @@ The component is intentionally small: it renders one `<canvas>`, compiles one We
 
 ## Demo
 
-<img src="demo.gif" alt="react-aurora-background demo" width="100%">
+![react-aurora-background demo](demo.gif)
 
 The included example app exposes the main visual controls so you can try different palettes, animation speeds, noise scales, and cursor swirl settings.
 
