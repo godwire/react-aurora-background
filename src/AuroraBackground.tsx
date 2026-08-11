@@ -140,20 +140,25 @@ export function AuroraBackground({
     const colorALocation = gl.getUniformLocation(program, 'u_colorA')
     const colorBLocation = gl.getUniformLocation(program, 'u_colorB')
     const colorCLocation = gl.getUniformLocation(program, 'u_colorC')
-    const speedLocation = gl.getUniformLocation(program, 'u_speed')
     const scaleLocation = gl.getUniformLocation(program, 'u_scale')
     const interactiveLocation = gl.getUniformLocation(program, 'u_interactive')
     const swirlRadiusLocation = gl.getUniformLocation(program, 'u_swirlRadius')
     const swirlStrengthLocation = gl.getUniformLocation(program, 'u_swirlStrength')
 
-    const startTime = performance.now()
-
-    // Reduced-motion state lives outside React state on purpose: it's read
-    // every frame inside the render loop, and putting it in state would
-    // mean re-running this whole effect (recompiling the shader program)
-    // every time it changes. A plain mutable flag is enough.
-    let reducedMotion = false
-    let frozenElapsed = 0
+    // `phase` is the value actually sent to the shader as u_time. It is
+    // NOT wall-clock elapsed time -- it's elapsed time already scaled by
+    // speed, accumulated incrementally frame by frame:
+    //
+    //   phase += (time since last frame) * current speed
+    //
+    // The alternative -- computing phase fresh every frame as
+    // `elapsedSinceMount * speed` -- applies whatever the *current* speed
+    // is to the *entire* history since mount, so the moment speed changes,
+    // phase jumps to wherever that new speed "would have had it" all
+    // along. Accumulating instead means a speed change only affects how
+    // fast phase grows from that point on -- nothing before it moves.
+    let phase = 0
+    let lastFrameTime = performance.now()
     let animating = false
     let animationFrame = 0
 
@@ -168,7 +173,7 @@ export function AuroraBackground({
       }
     }
 
-    function drawFrame(elapsed: number) {
+    function drawFrame() {
       resize()
       gl!.useProgram(program)
 
@@ -186,12 +191,11 @@ export function AuroraBackground({
       const colorC = colorCRef.current
 
       gl!.uniform2f(resolutionLocation, canvas!.width, canvas!.height)
-      gl!.uniform1f(timeLocation, elapsed)
+      gl!.uniform1f(timeLocation, phase)
       gl!.uniform2f(mouseLocation, mouseRef.current[0], mouseRef.current[1])
       gl!.uniform3f(colorALocation, colorA[0], colorA[1], colorA[2])
       gl!.uniform3f(colorBLocation, colorB[0], colorB[1], colorB[2])
       gl!.uniform3f(colorCLocation, colorC[0], colorC[1], colorC[2])
-      gl!.uniform1f(speedLocation, speedRef.current)
       gl!.uniform1f(scaleLocation, scaleRef.current)
       gl!.uniform1f(interactiveLocation, swirlActive ? 1 : 0)
       gl!.uniform1f(swirlRadiusLocation, swirlRadiusRef.current)
@@ -201,25 +205,36 @@ export function AuroraBackground({
     }
 
     function loop(now: number) {
-      drawFrame((now - startTime) / 1000)
+      const delta = (now - lastFrameTime) / 1000
+      lastFrameTime = now
+      phase += delta * speedRef.current
+      drawFrame()
       animationFrame = requestAnimationFrame(loop)
     }
 
     function startAnimating() {
       if (animating) return
       animating = true
+      // Reset the clock here, not just in `loop`: time spent stopped
+      // (reduced motion, tab backgrounded, whatever paused it) must not
+      // be integrated into `phase` as one giant `delta` on the first
+      // resumed frame.
+      lastFrameTime = performance.now()
       animationFrame = requestAnimationFrame(loop)
     }
 
-    // Stops the rAF loop and leaves exactly one frame drawn, at a pinned
-    // point in time, so reduced motion means "stopped", not "invisible".
+    // Stops the rAF loop and leaves exactly one frame drawn at the current
+    // phase, so reduced motion means "stopped", not "invisible". Always
+    // draws, even if called before the loop ever started (e.g. reduced
+    // motion is already active on mount) -- there needs to be a first
+    // frame on screen either way.
     function stopAnimating() {
-      if (!animating) return
       animating = false
       cancelAnimationFrame(animationFrame)
-      frozenElapsed = (performance.now() - startTime) / 1000
-      drawFrame(frozenElapsed)
+      drawFrame()
     }
+
+    let reducedMotion = false
 
     function handlePointerMove(event: PointerEvent) {
       const rect = canvas!.getBoundingClientRect()
@@ -248,7 +263,7 @@ export function AuroraBackground({
       // While frozen, the animation loop isn't running to pick up the new
       // size on its own, so redraw once immediately on resize.
       if (!animating) {
-        drawFrame(frozenElapsed)
+        drawFrame()
       } else {
         resize()
       }
@@ -285,9 +300,8 @@ export function AuroraBackground({
     // props that used to sit in this array (colors, speed, scale,
     // interactive, swirl settings) are read live from refs inside
     // `drawFrame` instead, so changing them updates the next frame in
-    // place rather than recompiling the shader program and restarting
-    // `startTime` -- which is what used to make the animation visibly
-    // jump on every prop change.
+    // place rather than recompiling the shader program and resetting the
+    // animation clock.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

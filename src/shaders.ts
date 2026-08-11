@@ -21,7 +21,6 @@ uniform vec2 u_mouse;
 uniform vec3 u_colorA;
 uniform vec3 u_colorB;
 uniform vec3 u_colorC;
-uniform float u_speed;
 uniform float u_scale;
 uniform float u_interactive;
 uniform float u_swirlRadius;
@@ -134,7 +133,11 @@ void main() {
     sampleUv = swirl(uv, aspectMouse, u_swirlRadius, u_swirlStrength);
   }
 
-  float t = u_time * u_speed;
+  // u_time arrives already scaled by speed and accumulated frame-by-frame
+  // on the JS side, not raw elapsed seconds -- see the phase comment in
+  // AuroraBackground.tsx. That's what lets speed change mid-animation
+  // without the noise field jumping to a different point.
+  float t = u_time;
   float n1 = fbm(vec3(sampleUv * u_scale, t));
   float n2 = fbm(vec3(sampleUv * u_scale + 4.2, t + 5.0));
 
