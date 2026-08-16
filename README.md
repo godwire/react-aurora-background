@@ -5,7 +5,7 @@
 
 An animated WebGL aurora background for React, written from scratch in GLSL. No three.js, no shader library, no dependencies beyond React itself — just a canvas, one compiled WebGL1 program, and simplex noise driving a slow, organic color field in real time.
 
-![Demo of react-aurora-background](./demo.gif)
+![Demo of react-aurora-background](./demo_gif.gif)
 
 ## Why this exists
 
