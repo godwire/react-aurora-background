@@ -5,7 +5,14 @@
 
 An animated WebGL aurora background for React, written from scratch in GLSL. No three.js, no shader library, no dependencies beyond React itself — just a canvas, one compiled WebGL1 program, and simplex noise driving a slow, organic color field in real time.
 
-![Demo of react-aurora-background](./demo_1.gif)
+<!--
+  Absolute raw.githubusercontent.com URL, not a relative path: npm only
+  ships dist/, so a relative ./demo_1.gif resolves to nothing on the npm
+  package page. This has to stay absolute either way.
+-->
+<video src="https://raw.githubusercontent.com/godwire/react-aurora-background/main/demo_1.mp4" autoplay loop muted playsinline width="640">
+  Demo of react-aurora-background
+</video>
 
 ## Why this exists
 
