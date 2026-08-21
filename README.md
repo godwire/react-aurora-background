@@ -1,5 +1,6 @@
 # react-aurora-background
 
+[![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)](https://react-aurora-background.vercel.app/)
 [![CI](https://github.com/godwire/react-aurora-background/actions/workflows/ci.yml/badge.svg)](https://github.com/godwire/react-aurora-background/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/godwire/react-aurora-background/blob/main/LICENSE)
 
