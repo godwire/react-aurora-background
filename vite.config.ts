@@ -15,6 +15,13 @@ export default defineConfig({
     rollupOptions: {
       external: ['react', 'react-dom', 'react/jsx-runtime'],
       output: {
+        // Rollup strips module-level directives when bundling, so the
+        // `'use client'` at the top of AuroraBackground.tsx never survives
+        // into dist/. Re-injecting it as a banner is what actually makes
+        // the published package usable in a Next.js App Router project
+        // without the consumer having to wrap it in their own client
+        // component. Harmless in the CJS build (just a string expression).
+        banner: `'use client';`,
         globals: {
           react: 'React',
           'react-dom': 'ReactDOM',
