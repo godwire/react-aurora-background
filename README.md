@@ -11,7 +11,6 @@ An animated WebGL aurora background for React, written from scratch in GLSL. No 
   ships dist/, so a relative ./demo_1.gif resolves to nothing on the npm
   package page. This has to stay absolute either way.
 -->
-[![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)](https://react-aurora-background.vercel.app/)
 ![Demo of react-aurora-background](https://raw.githubusercontent.com/godwire/react-aurora-background/main/demo_1.gif)
 
 ## Why this exists
