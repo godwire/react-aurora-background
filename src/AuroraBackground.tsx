@@ -3,21 +3,29 @@
 import { useEffect, useRef } from 'react'
 import type { CSSProperties } from 'react'
 import { fragmentShaderSource, vertexShaderSource } from './shaders'
+import { parseColor } from './color'
+import type { ColorInput, RGB } from './color'
 import { createProgram } from './webgl'
 
-export type RGB = [number, number, number]
+export type { ColorInput, RGB }
 
 export interface AuroraBackgroundProps {
   /** Extra class name(s) on the canvas element. */
   className?: string
   /** Inline styles on the canvas element. */
   style?: CSSProperties
-  /** First gradient color, as [r, g, b] in the 0-1 range. */
-  colorA?: RGB
-  /** Second gradient color, as [r, g, b] in the 0-1 range. */
-  colorB?: RGB
-  /** Third gradient color, as [r, g, b] in the 0-1 range. */
-  colorC?: RGB
+  /**
+   * First gradient color -- the darkest of the three, used as the base the
+   * other two are blended over.
+   *
+   * Accepts a CSS color string (`'#0d0526'`, `'#123'`, `'rgb(13, 5, 38)'`)
+   * or an `[r, g, b]` array with channels already in the 0-1 range.
+   */
+  colorA?: ColorInput
+  /** Second gradient color. Same formats as {@link AuroraBackgroundProps.colorA}. */
+  colorB?: ColorInput
+  /** Third gradient color. Same formats as {@link AuroraBackgroundProps.colorA}. */
+  colorC?: ColorInput
   /** Animation speed. Higher is faster. */
   speed?: number
   /** Noise scale -- higher values produce smaller, denser cloud shapes. */
@@ -78,9 +86,14 @@ export function AuroraBackground({
   // is intentional: it needs to happen before the render loop's next
   // frame runs, and a `useEffect` would only fire after paint, one tick
   // too late to avoid a stale frame.
-  const colorARef = useRef(colorA)
-  const colorBRef = useRef(colorB)
-  const colorCRef = useRef(colorC)
+  // Colors are parsed here, during render, rather than inside the draw
+  // loop: the loop runs up to 60 times a second and the props change at
+  // most once per render, so parsing per frame would be pure waste. What
+  // reaches the refs is always the normalized 0-1 triple the shader
+  // wants, whatever notation the caller passed in.
+  const colorARef = useRef<RGB>(DEFAULT_COLOR_A)
+  const colorBRef = useRef<RGB>(DEFAULT_COLOR_B)
+  const colorCRef = useRef<RGB>(DEFAULT_COLOR_C)
   const speedRef = useRef(speed)
   const scaleRef = useRef(scale)
   const interactiveRef = useRef(interactive)
@@ -88,9 +101,9 @@ export function AuroraBackground({
   const swirlStrengthRef = useRef(swirlStrength)
   const respectReducedMotionRef = useRef(respectReducedMotion)
 
-  colorARef.current = colorA
-  colorBRef.current = colorB
-  colorCRef.current = colorC
+  colorARef.current = parseColor(colorA, DEFAULT_COLOR_A)
+  colorBRef.current = parseColor(colorB, DEFAULT_COLOR_B)
+  colorCRef.current = parseColor(colorC, DEFAULT_COLOR_C)
   speedRef.current = speed
   scaleRef.current = scale
   interactiveRef.current = interactive

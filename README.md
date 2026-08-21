@@ -10,10 +10,10 @@ An animated WebGL aurora background for React, written from scratch in GLSL. No 
 
 <!--
   Absolute raw.githubusercontent.com URL, not a relative path: npm only
-  ships dist/, so a relative ./demo_1.gif resolves to nothing on the npm
+  ships dist/, so a relative ./demo.gif resolves to nothing on the npm
   package page. This has to stay absolute either way.
 -->
-![Demo of react-aurora-background](https://raw.githubusercontent.com/godwire/react-aurora-background/main/demo_1.gif)
+![Demo of react-aurora-background](https://raw.githubusercontent.com/godwire/react-aurora-background/main/demo.gif)
 
 ## Why this exists
 
@@ -47,9 +47,9 @@ function Hero() {
     <div style={{ position: 'relative', height: '100vh' }}>
       <AuroraBackground
         style={{ position: 'absolute', inset: 0 }}
-        colorA={[0.05, 0.02, 0.15]}
-        colorB={[0.4, 0.1, 0.6]}
-        colorC={[0.1, 0.6, 0.9]}
+        colorA="#0d0526"
+        colorB="#661a99"
+        colorC="#1a99e6"
       />
       <div style={{ position: 'relative', zIndex: 1 }}>
         <h1>Your content on top</h1>
@@ -65,9 +65,9 @@ function Hero() {
 | --- | --- | --- | --- |
 | `className` | `string` | `''` | Extra class name(s) applied to the canvas |
 | `style` | `CSSProperties` | — | Inline styles applied to the canvas |
-| `colorA` | `[number, number, number]` | `[0.05, 0.02, 0.15]` | First gradient color, RGB in the 0–1 range |
-| `colorB` | `[number, number, number]` | `[0.4, 0.1, 0.6]` | Second gradient color |
-| `colorC` | `[number, number, number]` | `[0.1, 0.6, 0.9]` | Third gradient color |
+| `colorA` | `string \| [number, number, number]` | `'#0d0526'` | First gradient color — the darkest, used as the base |
+| `colorB` | `string \| [number, number, number]` | `'#661a99'` | Second gradient color |
+| `colorC` | `string \| [number, number, number]` | `'#1a99e6'` | Third gradient color |
 | `speed` | `number` | `0.06` | Animation speed |
 | `scale` | `number` | `0.8` | Noise scale. Higher values produce smaller, denser cloud shapes |
 | `interactive` | `boolean` | `true` | Whether the flow visibly swirls around the cursor |
@@ -75,11 +75,21 @@ function Hero() {
 | `swirlStrength` | `number` | `2.4` | How tightly the flow twists around the cursor, in radians at the center |
 | `respectReducedMotion` | `boolean` | `true` | Whether to honor the OS-level `prefers-reduced-motion: reduce` setting |
 
-Colors are RGB triples in the 0–1 range, following WebGL convention, not 0–255. Pure red is `[1, 0, 0]`, not `[255, 0, 0]`.
+### Colors
+
+Color props take a CSS color string — hex in either form, or `rgb()`/`rgba()` in either the comma or the space syntax:
+
+```jsx
+<AuroraBackground colorB="#661a99" />
+<AuroraBackground colorB="#a3f" />
+<AuroraBackground colorB="rgb(102, 25, 154)" />
+```
+
+They also accept an `[r, g, b]` array with channels already in the 0–1 range, the way GLSL works with color — so pure red is `[1, 0, 0]`, not `[255, 0, 0]`. This is the format the shader uses internally, and it stays supported; reach for it if you're computing colors numerically and would rather skip the string round-trip. An unparseable color logs a warning and falls back to that channel's default instead of throwing.
 
 ### A note on live updates
 
-`colorA`, `colorB`, `colorC`, `speed`, `scale`, `interactive`, `swirlRadius`, and `swirlStrength` can all change freely between renders — hook them up to sliders, theme toggles, whatever you need. The WebGL context is created once, on mount, and every prop change is picked up by the next drawn frame in place, so the animation keeps running continuously through it. There's no need to memoize color arrays or worry about passing a new literal on every render; that used to force a full context rebuild in earlier versions of this component, but it no longer does.
+`colorA`, `colorB`, `colorC`, `speed`, `scale`, `interactive`, `swirlRadius`, and `swirlStrength` can all change freely between renders — hook them up to sliders, theme toggles, whatever you need. The WebGL context is created once, on mount, and every prop change is picked up by the next drawn frame in place, so the animation keeps running continuously through it. There's no need to memoize colors or worry about passing a new literal on every render; that used to force a full context rebuild in earlier versions of this component, but it no longer does. Color strings are parsed once per render rather than once per frame, so passing hex costs nothing at animation time.
 
 ## Accessibility
 
