@@ -1,7 +1,7 @@
 # react-aurora-background
 
 [![npm](https://img.shields.io/npm/v/react-aurora-background)](https://www.npmjs.com/package/react-aurora-background)
-[![Bundle size](https://img.shields.io/bundlephobia/minzip/react-aurora-background)](https://bundlephobia.com/package/react-aurora-background)
+[![Bundle size](https://img.shields.io/bundlephobia/minzip/react-aurora-background)](https://bundlephobia.com/package/react-aurora-background@0.2.0)
 [![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)](https://react-aurora-background.vercel.app/)
 [![CI](https://github.com/godwire/react-aurora-background/actions/workflows/ci.yml/badge.svg)](https://github.com/godwire/react-aurora-background/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/godwire/react-aurora-background/blob/main/LICENSE)
