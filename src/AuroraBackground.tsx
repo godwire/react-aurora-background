@@ -9,6 +9,8 @@ import { createProgram } from './webgl'
 
 export type { ColorInput, RGB }
 
+export type AuroraQuality = 'auto' | 'high' | 'medium' | 'low'
+
 export interface AuroraBackgroundProps {
   /** Extra class name(s) on the canvas element. */
   className?: string
@@ -32,6 +34,8 @@ export interface AuroraBackgroundProps {
   scale?: number
   /** Whether the flow visibly swirls around the cursor. */
   interactive?: boolean
+  /** Rendering quality. `auto` adapts to the measured frame rate. */
+  quality?: AuroraQuality
   /** How far the swirl reaches from the cursor, in UV units. Bigger = wider effect. */
   swirlRadius?: number
   /** How tightly the flow twists around the cursor, in radians at the center. */
@@ -70,6 +74,7 @@ export function AuroraBackground({
   speed = 0.06,
   scale = 0.8,
   interactive = true,
+  quality = 'auto',
   swirlRadius = 0.55,
   swirlStrength = 2.4,
   respectReducedMotion = true,
@@ -97,6 +102,7 @@ export function AuroraBackground({
   const speedRef = useRef(speed)
   const scaleRef = useRef(scale)
   const interactiveRef = useRef(interactive)
+  const qualityRef = useRef(quality)
   const swirlRadiusRef = useRef(swirlRadius)
   const swirlStrengthRef = useRef(swirlStrength)
   const respectReducedMotionRef = useRef(respectReducedMotion)
@@ -107,6 +113,7 @@ export function AuroraBackground({
   speedRef.current = speed
   scaleRef.current = scale
   interactiveRef.current = interactive
+  qualityRef.current = quality
   swirlRadiusRef.current = swirlRadius
   swirlStrengthRef.current = swirlStrength
   respectReducedMotionRef.current = respectReducedMotion
@@ -159,6 +166,7 @@ export function AuroraBackground({
     const interactiveLocation = gl.getUniformLocation(program, 'u_interactive')
     const swirlRadiusLocation = gl.getUniformLocation(program, 'u_swirlRadius')
     const swirlStrengthLocation = gl.getUniformLocation(program, 'u_swirlStrength')
+    const octavesLocation = gl.getUniformLocation(program, 'u_octaves')
 
     // `phase` is the value actually sent to the shader as u_time. It is
     // NOT wall-clock elapsed time -- it's elapsed time already scaled by
@@ -176,9 +184,51 @@ export function AuroraBackground({
     let lastFrameTime = performance.now()
     let animating = false
     let animationFrame = 0
+    let activeQuality: Exclude<AuroraQuality, 'auto'> = qualityRef.current === 'auto'
+      ? 'high'
+      : qualityRef.current
+    let averageFrameTime = 1000 / 60
+    let qualitySampleTime = performance.now()
+    const adaptiveStartTime = qualitySampleTime + 1500
+    const qualitySettings = {
+      high: { maxDpr: 2, octaves: 3 },
+      medium: { maxDpr: 1.5, octaves: 2 },
+      low: { maxDpr: 1, octaves: 1 },
+    } as const
+
+    function selectAdaptiveQuality(fps: number): Exclude<AuroraQuality, 'auto'> {
+      if (activeQuality === 'high') {
+        return fps < 42 ? 'medium' : 'high'
+      }
+      if (activeQuality === 'medium') {
+        if (fps < 32) return 'low'
+        if (fps >= 52) return 'high'
+        return 'medium'
+      }
+      return fps >= 48 ? 'medium' : 'low'
+    }
+
+    function updateQuality(now: number, frameTime: number) {
+      averageFrameTime = averageFrameTime * 0.9 + frameTime * 0.1
+      const configuredQuality = qualityRef.current
+      if (configuredQuality === 'auto' && now < adaptiveStartTime) return
+      if (now < qualitySampleTime + 500) return
+
+      const nextQuality = configuredQuality === 'auto'
+        ? selectAdaptiveQuality(1000 / averageFrameTime)
+        : configuredQuality
+      qualitySampleTime = now
+      if (nextQuality !== activeQuality) {
+        activeQuality = nextQuality
+        resize()
+      }
+    }
 
     function resize() {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      const dpr = Math.min(
+        window.devicePixelRatio || 1,
+        qualitySettings[activeQuality].maxDpr,
+      )
       const width = Math.max(1, Math.floor(canvas!.clientWidth * dpr))
       const height = Math.max(1, Math.floor(canvas!.clientHeight * dpr))
       if (canvas!.width !== width || canvas!.height !== height) {
@@ -215,6 +265,7 @@ export function AuroraBackground({
       gl!.uniform1f(interactiveLocation, swirlActive ? 1 : 0)
       gl!.uniform1f(swirlRadiusLocation, swirlRadiusRef.current)
       gl!.uniform1f(swirlStrengthLocation, swirlStrengthRef.current)
+      gl!.uniform1f(octavesLocation, qualitySettings[activeQuality].octaves)
 
       gl!.drawArrays(gl!.TRIANGLES, 0, 6)
     }
@@ -222,6 +273,7 @@ export function AuroraBackground({
     function loop(now: number) {
       const delta = (now - lastFrameTime) / 1000
       lastFrameTime = now
+      updateQuality(now, delta * 1000)
       phase += delta * speedRef.current
       drawFrame()
       animationFrame = requestAnimationFrame(loop)
@@ -313,7 +365,7 @@ export function AuroraBackground({
     // Deliberately empty: this effect creates the WebGL context exactly
     // once, on mount, and tears it down exactly once, on unmount. All the
     // props that used to sit in this array (colors, speed, scale,
-    // interactive, swirl settings) are read live from refs inside
+    // interactive, quality, swirl settings) are read live from refs inside
     // `drawFrame` instead, so changing them updates the next frame in
     // place rather than recompiling the shader program and resetting the
     // animation clock.

@@ -71,6 +71,7 @@ function Hero() {
 | `speed` | `number` | `0.06` | Animation speed |
 | `scale` | `number` | `0.8` | Noise scale. Higher values produce smaller, denser cloud shapes |
 | `interactive` | `boolean` | `true` | Whether the flow visibly swirls around the cursor |
+| `quality` | `'auto' \| 'high' \| 'medium' \| 'low'` | `'auto'` | Rendering quality. `auto` measures frame rate for the first 1.5 seconds, then adjusts between high, medium, and low |
 | `swirlRadius` | `number` | `0.55` | How far the swirl reaches from the cursor, in UV units |
 | `swirlStrength` | `number` | `2.4` | How tightly the flow twists around the cursor, in radians at the center |
 | `respectReducedMotion` | `boolean` | `true` | Whether to honor the OS-level `prefers-reduced-motion: reduce` setting |
@@ -89,7 +90,9 @@ They also accept an `[r, g, b]` array with channels already in the 0–1 range, 
 
 ### A note on live updates
 
-`colorA`, `colorB`, `colorC`, `speed`, `scale`, `interactive`, `swirlRadius`, and `swirlStrength` can all change freely between renders — hook them up to sliders, theme toggles, whatever you need. The WebGL context is created once, on mount, and every prop change is picked up by the next drawn frame in place, so the animation keeps running continuously through it. There's no need to memoize colors or worry about passing a new literal on every render; that used to force a full context rebuild in earlier versions of this component, but it no longer does. Color strings are parsed once per render rather than once per frame, so passing hex costs nothing at animation time.
+`colorA`, `colorB`, `colorC`, `speed`, `scale`, `interactive`, `quality`, `swirlRadius`, and `swirlStrength` can all change freely between renders — hook them up to sliders, theme toggles, whatever you need. The WebGL context is created once, on mount, and every prop change is picked up by the next drawn frame in place, so the animation keeps running continuously through it. There is no need to memoize colors or worry about passing a new literal on every render; that used to force a full context rebuild in earlier versions of this component, but it no longer does. Color strings are parsed once per render rather than once per frame, so passing hex costs nothing at animation time.
+
+`quality="auto"` is adaptive: it measures frame time during startup and periodically afterwards, then adjusts the shader from three noise octaves and a higher pixel ratio down to one octave and a capped pixel ratio when the GPU is under pressure. Use `high`, `medium`, or `low` to pin a level when you need deterministic rendering cost.
 
 ## Accessibility
 

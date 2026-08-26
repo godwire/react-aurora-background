@@ -25,6 +25,7 @@ uniform float u_scale;
 uniform float u_interactive;
 uniform float u_swirlRadius;
 uniform float u_swirlStrength;
+uniform float u_octaves;
 
 vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
@@ -93,12 +94,20 @@ float snoise(vec3 v) {
 
 // Fractal Brownian Motion: layers a few octaves of noise at increasing
 // frequency and decreasing amplitude for organic, cloud-like structure.
-// Kept to 3 octaves on purpose -- more octaves add fine high-frequency
+// Capped at 3 octaves on purpose -- more octaves add fine high-frequency
 // detail that reads as "busy" rather than "flowing" at this scale.
+//
+// u_octaves (1-3) lets the quality system trade detail for speed: the loop
+// bound itself stays a compile-time constant (required for this to compile
+// as a plain for-loop) and a uniform-driven break exits early instead --
+// since the uniform is the same for every pixel this frame, the extra
+// octaves' snoise() calls are actually skipped, not just masked to zero.
 float fbm(vec3 p) {
   float value = 0.0;
   float amplitude = 0.5;
+  int maxOctaves = int(u_octaves + 0.5);
   for (int i = 0; i < 3; i++) {
+    if (i >= maxOctaves) break;
     value += amplitude * snoise(p);
     p *= 2.0;
     amplitude *= 0.5;
