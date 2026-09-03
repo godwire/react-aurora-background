@@ -1,6 +1,6 @@
 {
   "name": "react-aurora-background",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "A dependency-free animated WebGL aurora/gradient background for React, driven by hand-written GLSL simplex noise -- no three.js required.",
   "type": "module",
   "main": "./dist/index.cjs",
