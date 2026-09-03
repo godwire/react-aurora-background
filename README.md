@@ -2,7 +2,7 @@
 
 [![npm](https://img.shields.io/npm/v/react-aurora-background)](https://www.npmjs.com/package/react-aurora-background)
 [![npm downloads](https://img.shields.io/npm/dm/react-aurora-background)](https://www.npmjs.com/package/react-aurora-background)
-[![Bundle size](https://img.shields.io/bundlephobia/minzip/react-aurora-background)](https://bundlephobia.com/package/react-aurora-background@0.2.0)
+[![Bundle size](https://img.shields.io/bundlephobia/minzip/react-aurora-background)](https://bundlephobia.com/package/react-aurora-background)
 [![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)](https://react-aurora-background.vercel.app/)
 [![CI](https://github.com/godwire/react-aurora-background/actions/workflows/ci.yml/badge.svg)](https://github.com/godwire/react-aurora-background/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/godwire/react-aurora-background/blob/main/LICENSE)
@@ -11,7 +11,7 @@ An animated WebGL aurora background for React, written from scratch in GLSL. No 
 
 <!--
   Absolute raw.githubusercontent.com URL, not a relative path: npm only
-  ships dist/, so a relative ./demo.gif resolves to nothing on the npm
+  ships dist/, so a relative ./demo.png resolves to nothing on the npm
   package page. This has to stay absolute either way.
 -->
 ![Demo of react-aurora-background](https://raw.githubusercontent.com/godwire/react-aurora-background/main/demo_1.gif)
@@ -25,7 +25,7 @@ What you get for that:
 - No runtime dependencies. `react` and `react-dom` are peers, nothing else ships.
 - Actual GLSL under the hood — 3D simplex noise (Ashima Arts' reference implementation) layered with fractal Brownian motion, not a canvas-2D gradient pretending to be one.
 - A flow field that reacts to the cursor, with the option to turn that off.
-- Three colors, animation speed, and noise scale all exposed as props, so the look is yours to tune.
+- Colors, animation speed, noise scale, cursor behaviour, and rendering quality all exposed as props, so the look and the cost are yours to tune.
 - A clean mount/unmount cycle — the program, buffers, and event listeners are torn down properly, so you can drop this into a router without leaking GL contexts on every navigation.
 - A safe fallback: if WebGL isn't available for whatever reason, it logs a warning and renders nothing instead of throwing, so you can put a static background behind it and never worry about a crash.
 - Full TypeScript definitions.
@@ -139,7 +139,7 @@ Deploy `example/dist` anywhere that serves static files — Vercel, Netlify, Git
 ```bash
 npm run build
 npm login
-npm publish
+npm publish   # npm asks for a 2FA code; publishing requires 2FA on the account
 ```
 
 `package.json` restricts the published files to `dist` (`"files": ["dist"]`), so only the built output ships — not the source or the example app.
@@ -148,9 +148,25 @@ npm publish
 
 The vertex shader is a no-op passthrough. A single two-triangle quad covers the canvas in clip space, and all the real work happens per pixel in the fragment shader, which reads `gl_FragCoord` directly for screen position rather than passing UVs down from the vertex stage.
 
-3D simplex noise (`snoise`) is sampled at `(x, y, time)`, so animating the field is just a matter of advancing the third coordinate — that's what keeps the motion continuous and organic instead of looking like a texture scrolling past. The time value the shader receives isn't raw elapsed seconds: it's accumulated frame by frame on the JavaScript side as `phase += delta * speed`, so a change to the `speed` prop only affects how fast the field moves from that moment on, rather than snapping the whole field to wherever a different constant speed would have put it since mount. Three octaves of that noise are stacked (fractal Brownian motion) to get the soft, cloud-like structure, then the result is remapped to `[0, 1]` and used to blend between the three configured colors with wide `smoothstep` ranges, which is what keeps the transitions gentle instead of banded.
+3D simplex noise (`snoise`) is sampled at `(x, y, time)`, so animating the field is just a matter of advancing the third coordinate — that's what keeps the motion continuous and organic instead of looking like a texture scrolling past. The time value the shader receives isn't raw elapsed seconds: it's accumulated frame by frame on the JavaScript side as `phase += delta * speed`, so a change to the `speed` prop only affects how fast the field moves from that moment on, rather than snapping the whole field to wherever a different constant speed would have put it since mount. Up to three octaves of that noise are stacked (fractal Brownian motion) to get the soft, cloud-like structure -- how many is what `quality` actually trades away, one octave at a time -- then the result is remapped to `[0, 1]` and used to blend between the three configured colors with wide `smoothstep` ranges, which is what keeps the transitions gentle instead of banded.
 
 The cursor interaction works by rotating the noise sample point around the cursor position, with the rotation angle falling off smoothly with distance — strong right at the cursor, gone a short distance out. That's what makes the flow field itself visibly swirl and track the cursor, rather than just placing a static highlight on top of an otherwise unchanged pattern. A smaller glow is layered on top to reinforce where the interaction is centered.
+
+## Changelog
+
+### 0.2.1
+
+- Added the `quality` prop (`auto` | `high` | `medium` | `low`). `auto` samples frame time at startup and periodically after that, then trades noise octaves and pixel ratio for speed when the GPU is struggling.
+
+### 0.2.0
+
+- Color props now accept CSS color strings — `'#661a99'`, `'#a3f'`, `'rgb(102, 25, 154)'` — instead of only `[r, g, b]` arrays in the 0–1 range. The array form still works; nothing was removed.
+- An unparseable color now warns and falls back to that channel's default rather than rendering something undefined.
+- Exported `parseColor` and the `ColorInput` type for anyone who wants the conversion on its own.
+
+### 0.1.0
+
+- First release. WebGL1 aurora background with hand-written GLSL simplex noise, cursor-driven swirl, `prefers-reduced-motion` support, and no runtime dependencies.
 
 ## License
 

@@ -41,6 +41,20 @@ export interface AuroraBackgroundProps {
   /** How tightly the flow twists around the cursor, in radians at the center. */
   swirlStrength?: number
   /**
+   * Domain warping strength -- how much the noise field distorts its own
+   * coordinates before the final lookup.
+   *
+   * At `0` the flow is soft and cloud-like (and identical to versions of
+   * this component from before the prop existed). Raising it stretches
+   * those clouds into ribbons and folds: around `0.4` it reads as aurora
+   * curtains, and past `1` it goes liquid, closer to oil-on-water than
+   * to sky.
+   *
+   * Costs one extra noise lookup per pixel per frame when non-zero, so
+   * `0` is genuinely cheaper rather than just visually plainer.
+   */
+  warp?: number
+  /**
    * Whether to honor the user's OS-level `prefers-reduced-motion: reduce`
    * setting. When true (the default) and that preference is active, the
    * animation stops on a single static frame and the cursor swirl is
@@ -77,6 +91,7 @@ export function AuroraBackground({
   quality = 'auto',
   swirlRadius = 0.55,
   swirlStrength = 2.4,
+  warp = 0.4,
   respectReducedMotion = true,
 }: AuroraBackgroundProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -105,6 +120,7 @@ export function AuroraBackground({
   const qualityRef = useRef(quality)
   const swirlRadiusRef = useRef(swirlRadius)
   const swirlStrengthRef = useRef(swirlStrength)
+  const warpRef = useRef(warp)
   const respectReducedMotionRef = useRef(respectReducedMotion)
 
   colorARef.current = parseColor(colorA, DEFAULT_COLOR_A)
@@ -116,6 +132,7 @@ export function AuroraBackground({
   qualityRef.current = quality
   swirlRadiusRef.current = swirlRadius
   swirlStrengthRef.current = swirlStrength
+  warpRef.current = warp
   respectReducedMotionRef.current = respectReducedMotion
 
   // Exposes the reduced-motion re-check from the setup effect below to the
@@ -137,36 +154,65 @@ export function AuroraBackground({
       return
     }
 
-    let program: WebGLProgram
-    try {
-      program = createProgram(gl, vertexShaderSource, fragmentShaderSource)
-    } catch (error) {
-      console.error('[AuroraBackground] failed to compile/link shaders:', error)
-      return
+    // Everything below lives in `let`s rather than `const`s, and is built
+    // by `createResources` rather than inline, because a lost WebGL
+    // context invalidates all of it at once: the program, the buffer and
+    // every uniform location have to be recreated against the restored
+    // context. Keeping creation in one callable place is what makes
+    // `webglcontextrestored` recoverable instead of terminal.
+    let program: WebGLProgram | null = null
+    let positionBuffer: WebGLBuffer | null = null
+    let positionLocation = -1
+    let resolutionLocation: WebGLUniformLocation | null = null
+    let timeLocation: WebGLUniformLocation | null = null
+    let mouseLocation: WebGLUniformLocation | null = null
+    let colorALocation: WebGLUniformLocation | null = null
+    let colorBLocation: WebGLUniformLocation | null = null
+    let colorCLocation: WebGLUniformLocation | null = null
+    let scaleLocation: WebGLUniformLocation | null = null
+    let interactiveLocation: WebGLUniformLocation | null = null
+    let swirlRadiusLocation: WebGLUniformLocation | null = null
+    let swirlStrengthLocation: WebGLUniformLocation | null = null
+    let octavesLocation: WebGLUniformLocation | null = null
+    let warpLocation: WebGLUniformLocation | null = null
+
+    /** Builds the GL program and quad. Returns false if that failed. */
+    function createResources(): boolean {
+      try {
+        program = createProgram(gl!, vertexShaderSource, fragmentShaderSource)
+      } catch (error) {
+        console.error('[AuroraBackground] failed to compile/link shaders:', error)
+        program = null
+        return false
+      }
+
+      // A single fullscreen quad (two triangles, clip-space corners) --
+      // the fragment shader does all the actual work per-pixel.
+      positionBuffer = gl!.createBuffer()
+      gl!.bindBuffer(gl!.ARRAY_BUFFER, positionBuffer)
+      gl!.bufferData(
+        gl!.ARRAY_BUFFER,
+        new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]),
+        gl!.STATIC_DRAW,
+      )
+
+      positionLocation = gl!.getAttribLocation(program, 'a_position')
+      resolutionLocation = gl!.getUniformLocation(program, 'u_resolution')
+      timeLocation = gl!.getUniformLocation(program, 'u_time')
+      mouseLocation = gl!.getUniformLocation(program, 'u_mouse')
+      colorALocation = gl!.getUniformLocation(program, 'u_colorA')
+      colorBLocation = gl!.getUniformLocation(program, 'u_colorB')
+      colorCLocation = gl!.getUniformLocation(program, 'u_colorC')
+      scaleLocation = gl!.getUniformLocation(program, 'u_scale')
+      interactiveLocation = gl!.getUniformLocation(program, 'u_interactive')
+      swirlRadiusLocation = gl!.getUniformLocation(program, 'u_swirlRadius')
+      swirlStrengthLocation = gl!.getUniformLocation(program, 'u_swirlStrength')
+      octavesLocation = gl!.getUniformLocation(program, 'u_octaves')
+      warpLocation = gl!.getUniformLocation(program, 'u_warp')
+      return true
     }
 
-    // A single fullscreen quad (two triangles, clip-space corners) -- the
-    // fragment shader does all the actual work per-pixel.
-    const positionBuffer = gl.createBuffer()
-    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer)
-    gl.bufferData(
-      gl.ARRAY_BUFFER,
-      new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]),
-      gl.STATIC_DRAW,
-    )
-
-    const positionLocation = gl.getAttribLocation(program, 'a_position')
-    const resolutionLocation = gl.getUniformLocation(program, 'u_resolution')
-    const timeLocation = gl.getUniformLocation(program, 'u_time')
-    const mouseLocation = gl.getUniformLocation(program, 'u_mouse')
-    const colorALocation = gl.getUniformLocation(program, 'u_colorA')
-    const colorBLocation = gl.getUniformLocation(program, 'u_colorB')
-    const colorCLocation = gl.getUniformLocation(program, 'u_colorC')
-    const scaleLocation = gl.getUniformLocation(program, 'u_scale')
-    const interactiveLocation = gl.getUniformLocation(program, 'u_interactive')
-    const swirlRadiusLocation = gl.getUniformLocation(program, 'u_swirlRadius')
-    const swirlStrengthLocation = gl.getUniformLocation(program, 'u_swirlStrength')
-    const octavesLocation = gl.getUniformLocation(program, 'u_octaves')
+    if (!createResources()) return
 
     // `phase` is the value actually sent to the shader as u_time. It is
     // NOT wall-clock elapsed time -- it's elapsed time already scaled by
@@ -239,6 +285,12 @@ export function AuroraBackground({
     }
 
     function drawFrame() {
+      // No program means the context was lost and hasn't been restored
+      // yet. Every GL call below would be a no-op against a dead context,
+      // and `useProgram(null)` throws in some browsers -- so bail before
+      // touching anything.
+      if (!program) return
+
       resize()
       gl!.useProgram(program)
 
@@ -266,12 +318,29 @@ export function AuroraBackground({
       gl!.uniform1f(swirlRadiusLocation, swirlRadiusRef.current)
       gl!.uniform1f(swirlStrengthLocation, swirlStrengthRef.current)
       gl!.uniform1f(octavesLocation, qualitySettings[activeQuality].octaves)
+      gl!.uniform1f(warpLocation, warpRef.current)
 
       gl!.drawArrays(gl!.TRIANGLES, 0, 6)
     }
 
+    // Longest frame gap that is treated as real elapsed time. Anything
+    // above this is not a slow frame, it's a gap where the loop wasn't
+    // running at all: browsers stop firing rAF entirely for backgrounded
+    // tabs and minimized windows, so the first callback after coming back
+    // reports however long the user was away.
+    //
+    // That raw value would do damage twice over. It would be integrated
+    // into `phase` in one step, snapping the aurora to a completely
+    // different point in its flow instead of resuming where it stopped;
+    // and it would land in `averageFrameTime` as a single enormous
+    // sample, which reads as "this device can barely render" and drops
+    // adaptive quality to `low` on a machine that was doing fine.
+    // Clamping to ~3 frames keeps both honest: a genuinely slow frame
+    // still counts, an absence doesn't.
+    const MAX_FRAME_DELTA = 0.05
+
     function loop(now: number) {
-      const delta = (now - lastFrameTime) / 1000
+      const delta = Math.min((now - lastFrameTime) / 1000, MAX_FRAME_DELTA)
       lastFrameTime = now
       updateQuality(now, delta * 1000)
       phase += delta * speedRef.current
@@ -301,7 +370,31 @@ export function AuroraBackground({
       drawFrame()
     }
 
+    // Three independent reasons the loop may be stopped. They're tracked
+    // separately rather than as one boolean because they change at
+    // different times and for different reasons -- scrolling the canvas
+    // back into view must not restart the animation if the user also has
+    // reduced motion on, and neither should resume anything while the GL
+    // context is gone.
     let reducedMotion = false
+    let inViewport = true
+    let contextLost = false
+
+    function shouldAnimate() {
+      return !reducedMotion && inViewport && !contextLost
+    }
+
+    // The single place that decides whether the loop runs. Every input
+    // that can change the answer (reduced-motion preference, viewport
+    // visibility, context loss/restore) calls this instead of starting or
+    // stopping the loop directly, so the reasons can't fight each other.
+    function syncAnimationState() {
+      if (shouldAnimate()) {
+        startAnimating()
+      } else {
+        stopAnimating()
+      }
+    }
 
     function handlePointerMove(event: PointerEvent) {
       const rect = canvas!.getBoundingClientRect()
@@ -337,15 +430,73 @@ export function AuroraBackground({
     })
     resizeObserver.observe(canvas)
 
+    // A background that has scrolled off screen still costs a full-screen
+    // fragment shader every frame if nothing stops it. On a long page
+    // that's the common case rather than the exception, so the loop is
+    // suspended whenever the canvas leaves the viewport and resumed when
+    // it comes back. `stopAnimating` leaves the last frame painted, so
+    // scrolling back to it shows the aurora immediately rather than a
+    // blank canvas waiting for the first frame.
+    //
+    // A small rootMargin starts the animation slightly before the canvas
+    // is actually visible, so it's already moving by the time it scrolls
+    // into view instead of visibly kicking into motion.
+    const intersectionObserver = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[entries.length - 1]
+        if (!entry) return
+        inViewport = entry.isIntersecting
+        syncAnimationState()
+      },
+      { rootMargin: '100px' },
+    )
+    intersectionObserver.observe(canvas)
+
+    // The browser can take the WebGL context away at any point -- GPU
+    // driver resets, laptops switching between integrated and discrete
+    // graphics, waking from sleep, or simply too many live contexts on
+    // the page. Without handling it, the canvas goes permanently blank
+    // and stays that way until remount.
+    //
+    // Calling preventDefault() on the loss event is what makes the
+    // context restorable at all; without it the browser never fires
+    // `webglcontextrestored`.
+    function handleContextLost(event: Event) {
+      event.preventDefault()
+      contextLost = true
+      // Not via syncAnimationState: stopAnimating() draws a final frame,
+      // and drawing into a lost context is exactly what must not happen
+      // here.
+      animating = false
+      cancelAnimationFrame(animationFrame)
+    }
+
+    function handleContextRestored() {
+      // Everything created against the old context is gone -- program,
+      // buffer and uniform locations all have to be built again from
+      // scratch. `phase` deliberately survives, so the aurora comes back
+      // where it left off rather than restarting.
+      if (!createResources()) return
+      contextLost = false
+      lastFrameTime = performance.now()
+      resize()
+      // `resize` only touches the viewport when the canvas dimensions
+      // actually changed, and a restore usually happens at the same size
+      // -- but the restored context starts with a default viewport
+      // regardless, so it has to be set explicitly here or the first
+      // frames render into the wrong rectangle.
+      gl!.viewport(0, 0, canvas!.width, canvas!.height)
+      syncAnimationState()
+    }
+
+    canvas.addEventListener('webglcontextlost', handleContextLost)
+    canvas.addEventListener('webglcontextrestored', handleContextRestored)
+
     const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
 
     function evaluateReducedMotion() {
       reducedMotion = respectReducedMotionRef.current && reducedMotionQuery.matches
-      if (reducedMotion) {
-        stopAnimating()
-      } else {
-        startAnimating()
-      }
+      syncAnimationState()
     }
 
     reevaluateReducedMotionRef.current = evaluateReducedMotion
@@ -356,11 +507,14 @@ export function AuroraBackground({
     return () => {
       cancelAnimationFrame(animationFrame)
       resizeObserver.disconnect()
+      intersectionObserver.disconnect()
+      canvas.removeEventListener('webglcontextlost', handleContextLost)
+      canvas.removeEventListener('webglcontextrestored', handleContextRestored)
       reducedMotionQuery.removeEventListener('change', evaluateReducedMotion)
       reevaluateReducedMotionRef.current = null
       window.removeEventListener('pointermove', handlePointerMove)
-      gl.deleteProgram(program)
-      gl.deleteBuffer(positionBuffer)
+      if (program) gl.deleteProgram(program)
+      if (positionBuffer) gl.deleteBuffer(positionBuffer)
     }
     // Deliberately empty: this effect creates the WebGL context exactly
     // once, on mount, and tears it down exactly once, on unmount. All the

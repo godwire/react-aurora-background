@@ -26,6 +26,7 @@ uniform float u_interactive;
 uniform float u_swirlRadius;
 uniform float u_swirlStrength;
 uniform float u_octaves;
+uniform float u_warp;
 
 vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
@@ -147,10 +148,38 @@ void main() {
   // AuroraBackground.tsx. That's what lets speed change mid-animation
   // without the noise field jumping to a different point.
   float t = u_time;
-  float n1 = fbm(vec3(sampleUv * u_scale, t));
-  float n2 = fbm(vec3(sampleUv * u_scale + 4.2, t + 5.0));
+  vec2 basePos = sampleUv * u_scale;
+  float n1 = fbm(vec3(basePos, t));
+  float n2 = fbm(vec3(basePos + 4.2, t + 5.0));
 
-  float mixValue = clamp((n1 + n2) * 0.5 + 0.5, 0.0, 1.0);
+  float mixValue;
+
+  if (u_warp > 0.001) {
+    // Domain warping: instead of coloring the noise directly, the noise
+    // is used to displace the coordinates that a further noise lookup
+    // reads from. Feeding a field back into its own input is what turns
+    // round, blobby shapes into stretched ribbons and folds -- the
+    // difference between "blurred clouds" and something that looks like
+    // it's actually flowing.
+    //
+    // n1/n2 are reused as the displacement vector rather than sampling
+    // two fresh fields for it, which keeps this at three fbm() calls
+    // instead of the five a textbook two-level warp would cost. At up to
+    // 3 octaves each that matters: this shader runs per-pixel, fullscreen.
+    //
+    // The warped result is blended with a little of the unwarped n1 so
+    // that turning warp up strengthens the folding without completely
+    // discarding the underlying shape the other props were tuned against.
+    vec2 warpOffset = vec2(n1, n2) * u_warp;
+    float n3 = fbm(vec3(basePos + warpOffset, t + 1.7));
+    mixValue = clamp(n3 * 0.7 + n1 * 0.3 + 0.5, 0.0, 1.0);
+  } else {
+    // Exactly the pre-warp formula. Kept as its own branch, not merged
+    // into the one above with warp = 0, so that a warp of 0 reproduces
+    // earlier versions of this component pixel for pixel -- and so it
+    // costs two fbm() calls rather than three.
+    mixValue = clamp((n1 + n2) * 0.5 + 0.5, 0.0, 1.0);
+  }
 
   // Wider smoothstep ranges than a plain 0-0.5/0.5-1 split -- softer,
   // more overlapping color transitions read as calmer and less banded.
