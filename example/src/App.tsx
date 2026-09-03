@@ -16,6 +16,10 @@ export default function App() {
   const [presetIndex, setPresetIndex] = useState(0)
   const [speed, setSpeed] = useState(0.06)
   const [scale, setScale] = useState(0.8)
+  // Starts at 0 so the demo opens on the plain, unwarped look. Drag it
+  // up to see the flow fold into ribbons.
+  const [warp, setWarp] = useState(0)
+  const [quality, setQuality] = useState<'auto' | 'high' | 'medium' | 'low'>('auto')
   const [swirlRadius, setSwirlRadius] = useState(0.55)
   const [swirlStrength, setSwirlStrength] = useState(2.4)
 
@@ -30,6 +34,8 @@ export default function App() {
         colorC={preset.colorC}
         speed={speed}
         scale={scale}
+        warp={warp}
+        quality={quality}
         swirlRadius={swirlRadius}
         swirlStrength={swirlStrength}
       />
@@ -45,7 +51,7 @@ export default function App() {
 
         <div className="panel">
           <div className="control-group">
-            <span className="control-label">Palette</span>
+            <span className="control-label control-name">Palette</span>
             <div className="chips">
               {PRESETS.map((p, i) => (
                 <button
@@ -61,8 +67,9 @@ export default function App() {
           </div>
 
           <div className="control-group">
-            <label className="control-label" htmlFor="speed">
-              Speed: {speed.toFixed(2)}
+            <label className="control-label control-head" htmlFor="speed">
+              <span className="control-name">Speed</span>
+              <span className="control-value">{speed.toFixed(2)}</span>
             </label>
             <input
               id="speed"
@@ -76,8 +83,9 @@ export default function App() {
           </div>
 
           <div className="control-group">
-            <label className="control-label" htmlFor="scale">
-              Scale: {scale.toFixed(2)}
+            <label className="control-label control-head" htmlFor="scale">
+              <span className="control-name">Scale</span>
+              <span className="control-value">{scale.toFixed(2)}</span>
             </label>
             <input
               id="scale"
@@ -91,8 +99,41 @@ export default function App() {
           </div>
 
           <div className="control-group">
-            <label className="control-label" htmlFor="swirl-radius">
-              Swirl radius: {swirlRadius.toFixed(2)}
+            <label className="control-label control-head" htmlFor="warp">
+              <span className="control-name">Warp</span>
+              <span className="control-value">{warp.toFixed(2)}</span>
+            </label>
+            <input
+              id="warp"
+              type="range"
+              min={0}
+              max={1.5}
+              step={0.05}
+              value={warp}
+              onChange={(e) => setWarp(Number(e.target.value))}
+            />
+          </div>
+
+          <div className="control-group">
+            <span className="control-label control-name">Quality</span>
+            <div className="chips">
+              {(['auto', 'high', 'medium', 'low'] as const).map((q) => (
+                <button
+                  key={q}
+                  type="button"
+                  className={`chip ${q === quality ? 'active' : ''}`}
+                  onClick={() => setQuality(q)}
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="control-group">
+            <label className="control-label control-head" htmlFor="swirl-radius">
+              <span className="control-name">Swirl radius</span>
+              <span className="control-value">{swirlRadius.toFixed(2)}</span>
             </label>
             <input
               id="swirl-radius"
@@ -106,8 +147,9 @@ export default function App() {
           </div>
 
           <div className="control-group">
-            <label className="control-label" htmlFor="swirl-strength">
-              Swirl strength: {swirlStrength.toFixed(2)}
+            <label className="control-label control-head" htmlFor="swirl-strength">
+              <span className="control-name">Swirl strength</span>
+              <span className="control-value">{swirlStrength.toFixed(2)}</span>
             </label>
             <input
               id="swirl-strength"

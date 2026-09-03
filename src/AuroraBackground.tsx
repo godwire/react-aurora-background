@@ -91,7 +91,7 @@ export function AuroraBackground({
   quality = 'auto',
   swirlRadius = 0.55,
   swirlStrength = 2.4,
-  warp = 0.4,
+  warp = 0.5,
   respectReducedMotion = true,
 }: AuroraBackgroundProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)

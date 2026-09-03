@@ -33,8 +33,8 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 56px 24px;
-  max-width: 720px;
+  padding: 32px 24px;
+  max-width: 760px;
   margin: 0 auto;
   /* The overlay spans the full viewport height for layout purposes, but
      most of that area has no visible content -- it must not swallow
@@ -54,38 +54,91 @@ footer a {
 }
 
 .hero h1 {
-  font-size: 34px;
-  margin-bottom: 12px;
+  font-size: 28px;
+  margin-bottom: 8px;
 }
 
 .hero p {
   color: rgba(255, 255, 255, 0.85);
   max-width: 520px;
   margin: 0 auto;
-  line-height: 1.6;
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 .panel {
-  background: rgba(10, 10, 15, 0.45);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 16px;
-  padding: 20px 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
+  background: rgba(8, 8, 14, 0.42);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 18px;
+  padding: 18px 22px;
+  /* Outer shadow lifts the panel off a busy, moving background; the inset
+     highlight along the top edge is what keeps the glass from reading as
+     a flat grey rectangle. */
+  box-shadow:
+    0 18px 50px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10);
+  /* Two columns rather than one tall stack: with seven controls a single
+     column runs past the fold on a 100%-zoom laptop screen, which means
+     scrolling to reach half of them -- and scrolling past the very
+     background the page exists to show. */
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 26px;
+}
+
+/* The palette chips read as the primary control and wrap awkwardly at
+   half width, so they get the full row to themselves. */
+.panel > .control-group:first-child {
+  grid-column: 1 / -1;
 }
 
 .control-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
+}
+
+/* Below roughly a phone's width two columns are narrower than the
+   sliders need, so fall back to the original single column. */
+@media (max-width: 560px) {
+  .panel {
+    grid-template-columns: 1fr;
+  }
 }
 
 .control-label {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.85);
+}
+
+/* Name on the left, live value on the right, rather than "Speed: 0.50" as
+   one string: the value column stays put while dragging instead of the
+   label shifting around as digits change width. */
+.control-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.control-name {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.control-value {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  /* Equal-width digits: without this the value jitters horizontally as
+     the numbers change while dragging. */
+  font-variant-numeric: tabular-nums;
 }
 
 .chips {
@@ -95,24 +148,126 @@ footer a {
 }
 
 .chip {
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  background: rgba(255, 255, 255, 0.08);
-  color: #f3f4f6;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.82);
   border-radius: 999px;
-  padding: 6px 14px;
-  font-size: 13px;
+  padding: 6px 13px;
+  font-size: 12px;
+  font-weight: 500;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition: background 0.18s ease, border-color 0.18s ease,
+    color 0.18s ease, transform 0.18s ease;
+}
+
+.chip:hover {
+  background: rgba(255, 255, 255, 0.13);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+}
+
+.chip:active {
+  transform: scale(0.96);
 }
 
 .chip.active {
-  background: rgba(255, 255, 255, 0.9);
-  color: #111827;
-  border-color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.95);
+  color: #0b0b12;
+  border-color: transparent;
+  box-shadow: 0 2px 12px rgba(255, 255, 255, 0.22);
 }
 
+/* The browser default range control is a bright system-blue bar that
+   fights the aurora behind it, so the whole thing is rebuilt: a thin
+   translucent track with a single white dot. Every engine needs its own
+   pseudo-elements here, and they cannot be merged into one rule -- an
+   unrecognized selector invalidates the entire block, so -webkit- and
+   -moz- rules are kept separate on purpose even where identical. */
 input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
   width: 100%;
+  height: 16px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type='range']::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: none;
+  /* Centres the 13px dot on the 3px track: (3 - 13) / 2. */
+  margin-top: -5px;
+  box-shadow:
+    0 0 0 4px rgba(255, 255, 255, 0.10),
+    0 2px 6px rgba(0, 0, 0, 0.45);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+input[type='range']:hover::-webkit-slider-thumb {
+  transform: scale(1.12);
+  box-shadow:
+    0 0 0 6px rgba(255, 255, 255, 0.14),
+    0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+input[type='range']:active::-webkit-slider-thumb {
+  transform: scale(1.02);
+}
+
+input[type='range']::-moz-range-track {
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* Firefox is the one engine that can fill the track up to the thumb on
+   its own; Chrome has no equivalent, so the filled portion is a small
+   bonus there rather than something the design depends on. */
+input[type='range']::-moz-range-progress {
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+input[type='range']::-moz-range-thumb {
+  width: 13px;
+  height: 13px;
+  border: none;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow:
+    0 0 0 4px rgba(255, 255, 255, 0.10),
+    0 2px 6px rgba(0, 0, 0, 0.45);
+}
+
+/* Keyboard focus only -- a visible ring on every mouse click would be
+   noise, but tabbing through the controls must stay traceable. */
+input[type='range']:focus {
+  outline: none;
+}
+
+input[type='range']:focus-visible::-webkit-slider-thumb {
+  box-shadow:
+    0 0 0 3px rgba(10, 10, 15, 0.8),
+    0 0 0 5px rgba(255, 255, 255, 0.85);
+}
+
+input[type='range']:focus-visible::-moz-range-thumb {
+  box-shadow:
+    0 0 0 3px rgba(10, 10, 15, 0.8),
+    0 0 0 5px rgba(255, 255, 255, 0.85);
 }
 
 footer {
